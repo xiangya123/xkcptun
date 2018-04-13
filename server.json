@@ -1,8 +1,10 @@
 {
-  "localinterface": "eth0",
+  "localinterface": "all",
   "localport": 9089,
   "remoteaddr": "127.0.0.1",
-  "remoteport": 443,
+  "remoteport": 22,
+  "port": 9989,
+  "client_port": 9988,
   "key": "14789632a",
   "crypt": "none",
   "mode": "fast3",

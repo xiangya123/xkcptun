@@ -47,6 +47,8 @@ struct xkcp_param {
 	int 	nc; 			// no congestion
 	int 	sock_buf;		// sockbuf
 	int 	keepalive;		// keepalive
+	int 	port;
+	int 	client_port;	// server client port
 };
 
 struct xkcp_config {

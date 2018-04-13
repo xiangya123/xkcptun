@@ -174,7 +174,12 @@ void xkcp_mon_accept_cb(struct evconnlistener *listener, evutil_socket_t fd,
 struct evconnlistener *set_xkcp_mon_listener(struct event_base *base, short port, void *ptr)
 {
 	struct sockaddr_in sin;
-	char *addr = get_iface_ip(xkcp_get_param()->local_interface);
+	char *addr;
+	if (strcmp(xkcp_get_param()->local_interface, "all") == 0) {
+		addr = "0.0.0.0";
+	} else {
+		addr = get_iface_ip(xkcp_get_param()->local_interface);
+	}
 	if (!addr) {
 		debug(LOG_ERR, "get_iface_ip [%s] failed", xkcp_get_param()->local_interface);
 		exit(0);
