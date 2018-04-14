@@ -1,7 +1,7 @@
 {
   "localinterface": "all",
-  "localport": 9088,
-  "remoteaddr": "120.27.225.68",
+  "localport": 22,
+  "remoteaddr": "106.14.185.60",
   "remoteport": 9089,
   "port": 9989,
   "client_port": 9988,

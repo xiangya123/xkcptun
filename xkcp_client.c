@@ -30,7 +30,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
+#include <event2/dns.h>
+#include <event2/dns_struct.h>
 
 #include <pthread.h>
 
@@ -127,7 +128,6 @@ void location_service_read_cb(struct bufferevent *bev, void *ctx) {
 
 void location_service_event_cb(struct bufferevent *bev, short what, void *ctx) {
     if (what == BEV_EVENT_CONNECTED) {
-//        puts("eeeeeeeeeeeeee");
         struct event_base *base = bufferevent_get_base(bev);
         struct xkcp_task *task = tcp_proxy_location_service_connected_cb(base, bev, ctx);
         bufferevent_setcb(bev, location_service_read_cb, NULL, location_service_event_cb, task);
@@ -142,12 +142,11 @@ void create_new_connection_to_location_service(struct event_base *base, void *pt
 
     if (bufferevent_socket_connect_hostname(bev, NULL, AF_INET,
                                             "127.0.0.1",
-                                            22) < 0) {
+                                            xkcp_get_param()->local_port) < 0) {
         bufferevent_free(bev);
         debug(LOG_ERR, "bufferevent_socket_connect failed [%s]", strerror(errno));
         goto err;
     }
-    puts("tests");
     err:
     return;
 }
@@ -164,35 +163,49 @@ void main_proxy_read_cb(struct bufferevent *bev, void *ctx) {
 		puts("new_connects");
         create_new_connection_to_location_service(base, ctx);
     }
-//    create_new_connection(base,)
-
 
 }
 
 void main_proxy_event_cb(struct bufferevent *bev, short what, void *ctx) {
-
+    printf("%d", what);
+    if(what == BEV_EVENT_TIMEOUT) {
+        exit(0);
+    }
 }
 
-void connect_main_server_proxy(struct event_base* base, void *ptr) {
-    struct bufferevent *bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
+struct bufferevent* connect_main_server_proxy(struct event_base* base, void *ptr) {
+    struct bufferevent *bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE|BEV_OPT_DEFER_CALLBACKS);
     bufferevent_setcb(bev, main_proxy_read_cb, NULL, main_proxy_event_cb, ptr);
-    bufferevent_enable(bev, EV_READ);
-    bufferevent_enable(bev, EV_WRITE);
+
+    struct sockaddr_in srv;
+    memset(&srv, 0, sizeof(srv));
+    srv.sin_addr.s_addr = inet_addr(xkcp_get_param()->remote_addr);
+    srv.sin_family = AF_INET;
+    srv.sin_port = htons(xkcp_get_param()->port);
+
+
     if (bufferevent_socket_connect_hostname(bev, NULL, AF_INET,
                                             xkcp_get_param()->remote_addr,
                                             xkcp_get_param()->port) < 0) {
         bufferevent_free(bev);
         debug(LOG_ERR, "bufferevent_socket_connect failed [%s]", strerror(errno));
-        goto err;
+        exit(0);
     }
-    puts("tests");
-    err:
-    return;
+//    if ((bufferevent_socket_connect(bev, (struct sockaddr*)&srv, sizeof(srv))) < 0) {
+//        bufferevent_free(bev);
+//        debug(LOG_ERR, "bufferevent_socket_connect failed [%s]", strerror(errno));
+//        exit(0);
+//    }
+    bufferevent_enable(bev, EV_READ);
+    bufferevent_enable(bev, EV_WRITE);
+    return bev;
+
 }
 
 int client_main_loop(void)
 {
     struct event_base *base = NULL;
+    struct bufferevent *connect_main_bev = NULL;
     struct evconnlistener *listener = NULL, *mlistener = NULL;
     int xkcp_fd = socket(AF_INET, SOCK_DGRAM, 0);
     struct event timer_event, *xkcp_event;
@@ -227,9 +240,8 @@ int client_main_loop(void)
     proxy_param.sockaddr.sin_family 	= AF_INET;
     proxy_param.sockaddr.sin_port		= htons(xkcp_get_param()->remote_port);
     memcpy((char *)&proxy_param.sockaddr.sin_addr.s_addr, (char *)server->h_addr, server->h_length);
-    listener = set_tcp_proxy_listener(base, &proxy_param);
 
-    connect_main_server_proxy(base, &proxy_param);
+    connect_main_bev = connect_main_server_proxy(base, &proxy_param);
     mlistener = set_xkcp_mon_listener(base, mport, &xkcp_task_list);
 
     event_assign(&timer_event, base, -1, EV_PERSIST, timer_event_cb, &timer_event);
@@ -241,6 +253,7 @@ int client_main_loop(void)
     event_base_dispatch(base);
     evconnlistener_free(mlistener);
     evconnlistener_free(listener);
+    bufferevent_free(connect_main_bev);
     close(xkcp_fd);
     event_base_free(base);
 
