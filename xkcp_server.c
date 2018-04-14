@@ -78,9 +78,9 @@ static void timer_event_cb(evutil_socket_t fd, short event, void *arg)
 
 void main_tcp_client_event_cb(struct bufferevent *bev, short what, void *ctx)
 {
-    void *puser = xkcp_tcp_event_cb(bev, what, ctx);
-    if (puser)
-        free(puser);
+//    void *puser = xkcp_tcp_event_cb(bev, what, ctx);
+//    if (puser)
+//        free(puser);
 
     if (what & (BEV_EVENT_EOF|BEV_EVENT_ERROR)) {
         bufferevent_free(bev);
