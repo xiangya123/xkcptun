@@ -58,8 +58,7 @@ tcp_proxy_event_cb(struct bufferevent *bev, short what, void *ctx)
 	xkcp_tcp_event_cb(bev, what, ctx);
 }
 
-void
-tcp_proxy_accept_cb(struct evconnlistener *listener, evutil_socket_t fd,
+void tcp_proxy_accept_cb(struct evconnlistener *listener, evutil_socket_t fd,
     struct sockaddr *a, int slen, void *param)
 {
 	struct xkcp_proxy_param *p = param;
@@ -86,4 +85,35 @@ tcp_proxy_accept_cb(struct evconnlistener *listener, evutil_socket_t fd,
 
 	bufferevent_setcb(b_in, tcp_proxy_read_cb, NULL, tcp_proxy_event_cb, task);
 	bufferevent_enable(b_in,  EV_READ | EV_WRITE );
+}
+
+struct xkcp_task* tcp_proxy_location_service_connected_cb(
+        struct event_base* base, struct bufferevent *bev, void *param)
+{
+	struct xkcp_proxy_param *p = param;
+	struct bufferevent *b_in = NULL;
+    evutil_socket_t fd = bufferevent_getfd(bev);
+
+	b_in = bufferevent_socket_new(base, fd,
+								  BEV_OPT_CLOSE_ON_FREE|BEV_OPT_DEFER_CALLBACKS);
+	assert(b_in);
+
+	static int conv = 1;
+	ikcpcb *kcp_client 	= ikcp_create(conv, param);
+	xkcp_set_config_param(kcp_client);
+	conv++;
+
+	debug(LOG_INFO, "accept new client [%d] in, conv [%d]", fd, conv-1);
+
+	struct xkcp_task *task = malloc(sizeof(struct xkcp_task));
+	assert(task);
+	task->kcp = kcp_client;
+	task->bev = b_in;
+	task->sockaddr = &p->sockaddr;
+	add_task_tail(task, &xkcp_task_list);
+
+	bufferevent_setcb(b_in, tcp_proxy_read_cb, NULL, tcp_proxy_event_cb, task);
+	bufferevent_enable(b_in,  EV_READ | EV_WRITE );
+    return task;
+
 }

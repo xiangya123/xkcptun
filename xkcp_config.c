@@ -63,6 +63,8 @@ static void xkcp_param_init(struct xkcp_param *param)
 	param->nc = 0;
 	param->sock_buf = 4194304;
 	param->keepalive = 10;
+	param->port = 9989;
+	param->client_port = 9988;
 }
 
 void config_init()
@@ -222,6 +224,10 @@ int xkcp_parse_json_param(struct xkcp_param *param, const char *filename)
 				param->nc = parse_json_int(value);;
 			} else if (strcmp(name, "keepalive") == 0) {
 				param->keepalive = parse_json_int(value);;
+			} else if (strcmp(name, "port") == 0) {
+				param->port = parse_json_int(value);
+			} else if (strcmp(name, "client_port") == 0) {
+				param->client_port = parse_json_int(value);
 			}
 		}
 	} else {

@@ -1,8 +1,10 @@
 {
-  "localinterface": "br-lan",
-  "localport": 9088,
-  "remoteaddr": "xkcpserverip",
+  "localinterface": "all",
+  "localport": 22,
+  "remoteaddr": "localhost",
   "remoteport": 9089,
+  "port": 9989,
+  "client_port": 9988,
   "key": "14789632a",
   "crypt": "none",
   "mode": "fast3",
